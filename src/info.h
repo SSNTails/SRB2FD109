@@ -1,0 +1,2244 @@
+// Emacs style mode select   -*- C++ -*-
+//-----------------------------------------------------------------------------
+//
+// Copyright (C) 1993-1996 by id Software, Inc.
+// Copyright (C) 1998-2000 by DooM Legacy Team.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//-----------------------------------------------------------------------------
+/// \file
+/// \brief Thing frame/state LUT
+
+#ifndef __INFO__
+#define __INFO__
+
+// Needed for action function pointer handling.
+#include "d_think.h"
+#include "sounds.h"
+
+// IMPORTANT NOTE: If you add/remove from this list of action
+// functions, don't forget to update them in dehacked.c!
+void A_Explode();
+void A_Pain();
+void A_Fall();
+void A_MonitorPop();
+void A_Look();
+void A_Chase();
+void A_FaceTarget();
+void A_Scream();
+void A_BossDeath();
+void A_CustomPower(); // Use this for a custom power
+void A_JumpShield(); // Obtained Jump Shield
+void A_RingShield(); // Obtained Ring Shield
+void A_RingBox(); // Obtained Ring Box Tails
+void A_Invincibility(); // Obtained Invincibility Box
+void A_SuperSneakers(); // Obtained Super Sneakers Box
+void A_BunnyHop(); // have bunny hop tails
+void A_BubbleSpawn(); // Randomly spawn bubbles
+void A_BubbleRise(); // Bubbles float to surface
+void A_BubbleCheck(); // Don't draw if not underwater
+void A_ExtraLife(); // Extra Life
+void A_BombShield(); // Obtained Bomb Shield
+void A_WaterShield(); // Obtained Water Shield
+void A_FireShield();
+void A_ScoreRise(); // Rise the score logo
+void A_AttractChase(); // Ring Chase
+void A_DropMine(); // Drop Mine from Skim or Jetty-Syn Bomber
+void A_FishJump(); // Fish Jump
+void A_SignPlayer(); // Level end sign function to determine which player to display
+void A_ThrownRing(); // Sparkle trail for red ring
+void A_SetSolidSteam();
+void A_UnsetSolidSteam();
+void A_JetChase();
+void A_JetbThink(); // Jetty-Syn Bomber Thinker
+void A_JetgThink(); // Jetty-Syn Gunner Thinker
+void A_JetgShoot(); // Jetty-Syn Shoot Function
+void A_ShootBullet(); // JetgShoot without reactiontime setting
+void A_MouseThink(); // Mouse Thinker
+void A_DetonChase(); // Deton Chaser
+void A_CapeChase(); // Fake little Super Sonic cape
+void A_RotateSpikeBall(); // Spike ball rotation
+void A_SnowBall(); // Snowball function for Snow Buster
+void A_CrawlaCommanderThink(); // Crawla Commander
+void A_SmokeTrailer();
+void A_RingExplode();
+void A_MixUp();
+void A_BossScream();
+void A_Invinciblerize();
+void A_DeInvinciblerize();
+void A_Boss2PogoSFX();
+void A_EggmanBox();
+void A_TurretFire();
+void A_SuperTurretFire();
+void A_TurretStop();
+void A_SkimChase();
+void A_SkullAttack();
+void A_CyberAttack();
+void A_SparkFollow();
+void A_BuzzFly();
+void A_SetReactionTime();
+void A_LinedefExecute();
+void A_PlaySeeSound();
+void A_PlayAttackSound();
+void A_PlayActiveSound();
+void A_PumaJump(); // Mario mode function
+void A_1upThinker();
+void A_BossZoom(); //Usused
+void A_Boss1Chase();
+void A_Boss2Chase();
+void A_Boss2Pogo();
+
+// ratio of states to sprites to mobj types is roughly 6:1:1
+#define NUMMOBJFREESLOTS 128
+#define NUMSPRITEFREESLOTS NUMMOBJFREESLOTS
+#define NUMSTATEFREESLOTS (NUMMOBJFREESLOTS*6)
+
+// Hey, moron! If you change this table, don't forget about the sprite lights in hw_light.c! (don't modify this comment, either!)
+typedef enum
+{
+	SPR_MISL,
+	SPR_PLAY,
+	SPR_POSS,
+	SPR_SPOS,
+	SPR_EGGM,
+	SPR_BON1,
+	SPR_SRBX,
+	SPR_GRBX,
+	SPR_EMMY, // emerald test
+	SPR_PINV,
+	SPR_BLTV,
+	SPR_SPRY, // yellow spring
+	SPR_SUDY,
+	SPR_SHTV,
+	SPR_FANS,
+	SPR_BUBL, // water bubble source
+	SPR_YLTV,
+	SPR_FWR1,
+	SPR_SPRR, // red spring
+	SPR_SUDR,
+	SPR_SMOK,
+	SPR_SPLA,
+	SPR_TNT1, // invisible sprite
+	SPR_BIRD, // Birdie freed!
+	SPR_SQRL, // Squirrel freed!
+	SPR_YORB, // Yellow Shield
+	SPR_BORB, // Blue Shield
+	SPR_KORB, // Black Shield
+	SPR_SPRK, // spark
+	SPR_IVSP, // invincibility sparkles
+	SPR_IVSQ, // finish invincibility sparkles
+	SPR_DISS, // dissipating object
+	SPR_BUBP, // Small bubble
+	SPR_BUBO, // Medium bubble
+	SPR_BUBN, // Large bubble
+	SPR_BUBM, // Extra Large (would you like fries with that?) bubble
+	SPR_CNTA, // Drowning Timer - 0
+	SPR_CNTB, // Drowning Timer - 1
+	SPR_CNTC, // Drowning Timer - 2
+	SPR_CNTD, // Drowning Timer - 3
+	SPR_CNTE, // Drowning Timer - 4
+	SPR_CNTF, // Drowning Timer - 5
+	SPR_POPP, // Extra Large bubble goes POP!
+	SPR_PRUP, // 1up Box
+	SPR_BKTV, // Bomb shield TV
+	SPR_SCRA, // 100 score logo
+	SPR_SCRB, // 200 score logo
+	SPR_SCRC, // 500 score logo
+	SPR_SCRD, // 1000 score logo
+	SPR_SSPK, // Super Sonic Spark
+	SPR_GRAS, // Grass debris
+	SPR_YSPR, // Yellow Diagonal Spring
+	SPR_RSPR, // Red Diagonal Spring
+	SPR_YSUD, // Yellow Upside-Down Diagonal Spring
+	SPR_RSUD, // Red Upside-Down Diagonal Spring
+	SPR_SKIM, // Skim mine dropper
+	SPR_MINE, // Skim mine
+	SPR_FISH, // Greenflower Fish
+	SPR_GARG, // Deep Sea Gargoyle
+	SPR_SPLH,
+	SPR_THOK, // Thok! mobj
+	SPR_THZP, // Techno Hill Zone Plant
+	SPR_SIGN, // Level end sign
+	SPR_RRNG, // Red Ring
+	SPR_TTAG, // Tag Sign
+	SPR_STEM, // Steam riser
+	SPR_RFLG, // Red CTF Flag
+	SPR_BFLG, // Blue CTF Flag
+	SPR_GFLG, // Got Flag sign
+	SPR_TOKE, // Special Stage Token
+	SPR_CEMG, // Chaos Emerald (intangible)
+	SPR_CEMO, // Chaos Emerald (intangible)
+	SPR_CEMP, // Chaos Emerald (intangible)
+	SPR_CEMB, // Chaos Emerald (intangible)
+	SPR_CEMR, // Chaos Emerald (intangible)
+	SPR_CEML, // Chaos Emerald (intangible)
+	SPR_CEMY, // Chaos Emerald (intangible)
+	SPR_JETB, // Jetty-Syn Bomber
+	SPR_JETG, // Jetty-Syn Gunner
+	SPR_JBUL, // Jetty-Syn Bullet
+	SPR_MOUS, // Mouse
+	SPR_DETN, // Deton
+	SPR_XPLD, // Robot Explosion
+	SPR_CHAN, // CEZ Chain
+	SPR_CAPE, // Fake little Super Sonic cape
+	SPR_SNO1, // Snowflake
+	SPR_SANT, // Santa
+	SPR_EMER, // Emerald Hunt 1
+	SPR_EMES, // Emerald Hunt 2
+	SPR_EMET, // Emerald Hunt 3
+	SPR_SBLL, // Snow Ball for Snow Buster
+	SPR_SPIK, // Spike Ball
+	SPR_CCOM, // Crawla Commander
+	SPR_RAIN, // Rain
+	SPR_DSPK, // Ceiling spike
+	SPR_USPK, // Floor spike
+	SPR_STPT, // Starpost
+	SPR_RNGM, // Homing Ring
+	SPR_RNGR, // Rail Ring
+	SPR_RNGS, // Shield Ring
+	SPR_RNGA, // Automatic Ring
+	SPR_RNGE, // Explosion Ring
+	SPR_TAEH, // Thrown Automatic Explosion Homing ring
+	SPR_TAER, // Thrown Automatic Explosion Ring
+	SPR_THER, // Thrown Homing Explosion Ring
+	SPR_TAHR, // Thrown Automatic Homing Ring
+	SPR_THOM, // Thrown Homing Ring
+	SPR_TAUT, // Thrown Automatic Ring
+	SPR_TEXP, // Thrown Explosion Ring
+	SPR_BUS1, // GFZ Bush w/ berries
+	SPR_BUS2, // GFZ Bush w/o berries
+	SPR_FWR2, // GFZ Sunflower
+	SPR_FWR3, // GFZ budding flower
+	SPR_MIXU, // Player mixing monitor
+	SPR_QUES, // Random monitor
+	SPR_MTEX, // Exploding monitor
+	SPR_FLAM, // Flame (has corona)
+
+	// Mario-specific stuff
+	SPR_PUMA,
+	SPR_HAMM,
+	SPR_KOOP,
+	SPR_SHLL,
+	SPR_MAXE,
+	SPR_BFLM,
+	SPR_FBLL,
+	SPR_FFWR,
+
+	SPR_NSPK, // NiGHTS sparkle
+	SPR_SUPE, // NiGHTS character flying
+	SPR_SUPZ, // NiGHTS hurt
+	SPR_NDRN, // NiGHTS drone
+	SPR_NDRL, // NiGHTS character drilling
+
+	SPR_SEED, // Sonic CD flower seed
+	SPR_JETF, // Boss jet fumes
+	SPR_HOOP, // NiGHTS hoop sprite
+	SPR_NSCR, // NiGHTS score sprite
+	SPR_NWNG, // NiGHTS Wing collectable item.
+	SPR_EGGN, // Boss 2
+	SPR_GOOP, // Boss 2 Goop
+	SPR_BPLD, // Boss Explosions
+	SPR_ALRM, // THZ2 Alarm
+
+	SPR_RDTV, // Fire shield
+	SPR_RORB, // Red orb
+
+	SPR_EGGB, // Eggman box
+	SPR_SFLM, // Spin fire
+
+	SPR_TNKA, // Boss 2 Tank 1
+	SPR_TNKB, // Boss 2 Tank 2
+	SPR_SPNK, // Boss 2 Spigot
+
+	SPR_TFOG, // Teleport Fog
+	SPR_EEGG, // Easter Egg!
+
+	SPR_LITE, // Streetlight corona
+	SPR_TRET,
+	SPR_TRLS,
+	SPR_FWR4,
+
+	SPR_GOOM,
+	SPR_BGOM,
+	SPR_MUS1,
+	SPR_MUS2,
+	SPR_TOAD,
+	SPR_COIN,
+	SPR_CPRK,
+
+	SPR_XMS1,
+	SPR_XMS2,
+	SPR_XMS3,
+
+	SPR_CAPS, // Capsule thingy for NiGHTS
+
+	SPR_SUPT, // Super Sonic Transformation
+
+	// Crumbly rocks
+	SPR_ROIA,
+	SPR_ROIB,
+	SPR_ROIC,
+	SPR_ROID,
+	SPR_ROIE,
+	SPR_ROIF,
+	SPR_ROIG,
+	SPR_ROIH,
+	SPR_ROII,
+	SPR_ROIJ,
+	SPR_ROIK,
+	SPR_ROIL,
+	SPR_ROIM,
+	SPR_ROIN,
+	SPR_ROIO,
+	SPR_ROIP,
+
+	// NiGHTS Paraloop Powerups
+	SPR_NPRA,
+	SPR_NPRB,
+	SPR_NPRC,
+
+	SPR_REDX, // He's BACK!
+
+	SPR_SPRB, // Blue springs
+	SPR_BUZZ, // Buzz (Gold)
+	SPR_RBUZ, // Buzz (Red)
+
+	SPR_CEMK, // 8th Emerald
+
+	SPR_WHTV, // Jump shield TV
+	SPR_WORB, // White Shield
+
+	SPR_TURR, // Pop-Up Turret
+
+	SPR_FIRSTFREESLOT,
+	SPR_LASTFREESLOT = SPR_FIRSTFREESLOT + NUMSPRITEFREESLOTS - 1,
+	NUMSPRITES
+} spritenum_t;
+
+// Object states (don't modify this comment!)
+typedef enum
+{
+	S_NULL,
+	S_ROCKET,
+	S_PLAY_STND,
+	S_PLAY_TAP1,
+	S_PLAY_TAP2,
+	S_PLAY_RUN1,
+	S_PLAY_RUN2,
+	S_PLAY_RUN3,
+	S_PLAY_RUN4,
+	S_PLAY_RUN5,
+	S_PLAY_RUN6,
+	S_PLAY_RUN7,
+	S_PLAY_RUN8,
+	S_PLAY_ATK1,
+	S_PLAY_ATK2,
+	S_PLAY_ATK3,
+	S_PLAY_ATK4,
+	S_PLAY_PLG1,
+	S_PLAY_SPD1,
+	S_PLAY_SPD2,
+	S_PLAY_SPD3,
+	S_PLAY_SPD4,
+	S_PLAY_ABL1,
+	S_PLAY_ABL2,
+	S_PLAY_SPC1,
+	S_PLAY_SPC2,
+	S_PLAY_SPC3,
+	S_PLAY_SPC4,
+	S_PLAY_CLIMB1,
+	S_PLAY_CLIMB2,
+	S_PLAY_CLIMB3,
+	S_PLAY_CLIMB4,
+	S_PLAY_CLIMB5,
+	S_PLAY_GASP,
+	S_PLAY_PAIN,
+	S_PLAY_DIE1,
+	S_PLAY_DIE2,
+	S_PLAY_DIE3,
+	S_PLAY_TEETER1,
+	S_PLAY_TEETER2,
+	S_PLAY_FALL1,
+	S_PLAY_FALL2,
+	S_PLAY_CARRY,
+	S_PLAY_SUPERSTAND,
+	S_PLAY_SUPERWALK1,
+	S_PLAY_SUPERWALK2,
+	S_PLAY_SUPERFLY1,
+	S_PLAY_SUPERFLY2,
+	S_PLAY_SUPERTEETER,
+	S_PLAY_SUPERHIT,
+
+	// Blue Crawla
+	S_POSS_STND,
+	S_POSS_STND2,
+	S_POSS_RUN1,
+	S_POSS_RUN2,
+	S_POSS_RUN3,
+	S_POSS_RUN4,
+	S_POSS_RUN5,
+	S_POSS_RUN6,
+	S_POSS_RUN7,
+	S_POSS_RUN8,
+	S_POSS_RUN9,
+	S_POSS_RUN10,
+	S_POSS_RUN11,
+	S_POSS_RUN12,
+	S_POSS_RUN13,
+	S_POSS_RUN14,
+	S_POSS_RUN15,
+	S_POSS_RUN16,
+	S_POSS_RUN17,
+	S_POSS_DIE1,
+	S_POSS_DIE2,
+	S_POSS_DIE3,
+	S_POSS_DIE4,
+
+	// Red Crawla
+	S_SPOS_STND,
+	S_SPOS_STND2,
+	S_SPOS_RUN1,
+	S_SPOS_RUN2,
+	S_SPOS_RUN3,
+	S_SPOS_RUN4,
+	S_SPOS_RUN5,
+	S_SPOS_RUN6,
+	S_SPOS_RUN7,
+	S_SPOS_RUN8,
+	S_SPOS_RUN9,
+	S_SPOS_RUN10,
+	S_SPOS_RUN11,
+	S_SPOS_RUN12,
+	S_SPOS_RUN13,
+	S_SPOS_RUN14,
+	S_SPOS_RUN15,
+	S_SPOS_RUN16,
+	S_SPOS_RUN17,
+	S_SPOS_DIE1,
+	S_SPOS_DIE2,
+	S_SPOS_DIE3,
+	S_SPOS_DIE4,
+
+	// Boss 1
+	S_EGGMOBILE_STND,
+	S_EGGMOBILE_ATK1,
+	S_EGGMOBILE_ATK2,
+	S_EGGMOBILE_ATK3,
+	S_EGGMOBILE_ATK4,
+	S_EGGMOBILE_PANIC1,
+	S_EGGMOBILE_PANIC2,
+	S_EGGMOBILE_PAIN,
+	S_EGGMOBILE_DIE1,
+	S_EGGMOBILE_DIE2,
+	S_EGGMOBILE_DIE3,
+	S_EGGMOBILE_DIE4,
+	S_EGGMOBILE_DIE5,
+	S_EGGMOBILE_DIE6,
+	S_EGGMOBILE_DIE7,
+	S_EGGMOBILE_DIE8,
+	S_EGGMOBILE_DIE9,
+	S_EGGMOBILE_DIE10,
+	S_EGGMOBILE_DIE11,
+	S_EGGMOBILE_DIE12,
+	S_EGGMOBILE_DIE13,
+	S_EGGMOBILE_DIE14,
+	S_EGGMOBILE_FLEE1,
+	S_EGGMOBILE_FLEE2,
+
+	// Ring
+	S_BON1,
+	S_BON1A,
+	S_BON1B,
+	S_BON1C,
+	S_BON1D,
+	S_BON1E,
+	S_BON1F,
+	S_BON1G,
+	S_BON1H,
+	S_BON1I,
+	S_BON1J,
+	S_BON1K,
+	S_BON1L,
+	S_BON1M,
+	S_BON1N,
+	S_BON1O,
+	S_BON1P,
+	S_BON1Q,
+	S_BON1R,
+	S_BON1S,
+	S_BON1T,
+	S_BON1U,
+	S_BON1V,
+	S_BON1W,
+
+	// Super Ring Box
+	S_SUPERRINGBOX,
+	S_SUPERRINGBOX1,
+	S_SUPERRINGBOX2,
+	S_SUPERRINGBOX3,
+
+	// Silver Ring Box
+	S_GREYRINGBOX,
+	S_GREYRINGBOX1,
+	S_GREYRINGBOX2,
+	S_GREYRINGBOX3,
+
+	// Special Stage Token
+	S_EMMY1,
+	S_EMMY2,
+	S_EMMY3,
+	S_EMMY4,
+	S_EMMY5,
+	S_EMMY6,
+	S_EMMY7,
+
+	// Invincibility Box
+	S_PINV,
+	S_PINV2,
+	S_PINV3,
+	S_PINV4,
+
+	// Water Shield Box
+	S_BLTV,
+	S_BLTV1,
+	S_BLTV2,
+	S_BLTV3,
+
+	S_YELLOWSPRING,
+	S_YELLOWSPRING2,
+	S_YELLOWSPRING3,
+	S_YELLOWSPRING4,
+	S_YELLOWSPRING5,
+
+	S_YELLOWSPRINGUD,
+	S_YELLOWSPRINGUD2,
+	S_YELLOWSPRINGUD3,
+	S_YELLOWSPRINGUD4,
+	S_YELLOWSPRINGUD5,
+
+	// Super Sneakers Box
+	S_SHTV,
+	S_SHTV1,
+	S_SHTV2,
+	S_SHTV3,
+
+	S_FAN,
+	S_FAN2,
+	S_FAN3,
+	S_FAN4,
+	S_FAN5,
+
+	// Bubble Source
+	S_BUBBLES1,
+	S_BUBBLES2,
+
+	// Ring Shield Box
+	S_YLTV,
+	S_YLTV1,
+	S_YLTV2,
+	S_YLTV3,
+
+	S_GFZFLOWERA,
+	S_GFZFLOWERA2,
+
+	S_REDSPRING,
+	S_REDSPRING2,
+	S_REDSPRING3,
+	S_REDSPRING4,
+	S_REDSPRING5,
+
+	S_REDSPRINGUD,
+	S_REDSPRINGUD2,
+	S_REDSPRINGUD3,
+	S_REDSPRINGUD4,
+	S_REDSPRINGUD5,
+
+	// lava/slime damage burn smoke
+	S_SMOK1,
+	S_SMOK2,
+	S_SMOK3,
+	S_SMOK4,
+	S_SMOK5,
+
+	// added water splash
+	S_SPLASH1,
+	S_SPLASH2,
+	S_SPLASH3,
+
+	S_TNT1, // state for invisible sprite
+
+	// Freed Birdie
+	S_BIRD1,
+	S_BIRD2,
+	S_BIRD3,
+
+	// Freed Squirrel
+	S_SQRL1,
+	S_SQRL2,
+	S_SQRL3,
+	S_SQRL4,
+	S_SQRL5,
+	S_SQRL6,
+	S_SQRL7,
+	S_SQRL8,
+	S_SQRL9,
+	S_SQRL10,
+
+	// Yellow Shield Orb
+	S_YORB1,
+	S_YORB2,
+	S_YORB3,
+	S_YORB4,
+	S_YORB5,
+	S_YORB6,
+	S_YORB7,
+	S_YORB8,
+
+	// Blue Shield Orb
+	S_BORB1,
+	S_BORB2,
+	S_BORB3,
+	S_BORB4,
+	S_BORB5,
+	S_BORB6,
+	S_BORB7,
+	S_BORB8,
+
+	// Black Shield Orb
+	S_KORB1,
+	S_KORB2,
+	S_KORB3,
+	S_KORB4,
+	S_KORB5,
+	S_KORB6,
+	S_KORB7,
+	S_KORB8,
+
+	// White Shield Orb
+	S_WORB1,
+	S_WORB2,
+	S_WORB3,
+	S_WORB4,
+	S_WORB5,
+	S_WORB6,
+	S_WORB7,
+	S_WORB8,
+
+
+	// Red Shield Orb
+	S_RORB1,
+	S_RORB2,
+	S_RORB3,
+	S_RORB4,
+	S_RORB5,
+	S_RORB6,
+	S_RORB7,
+	S_RORB8,
+
+	// Spark
+	S_SPRK1,
+	S_SPRK2,
+	S_SPRK3,
+	S_SPRK4,
+	S_SPRK5,
+	S_SPRK6,
+	S_SPRK7,
+	S_SPRK8,
+	S_SPRK9,
+	S_SPRK10,
+	S_SPRK11,
+	S_SPRK12,
+	S_SPRK13,
+	S_SPRK14,
+	S_SPRK15,
+	S_SPRK16,
+
+	// Invincibility Sparkles
+	S_IVSP1,
+	S_IVSP2,
+	S_IVSP3,
+	S_IVSP4,
+	S_IVSP5,
+	S_IVSP6,
+	S_IVSP7,
+	S_IVSP8,
+	S_IVSP9,
+	S_IVSP10,
+	S_IVSP11,
+	S_IVSP12,
+	S_IVSP13,
+	S_IVSP14,
+	S_IVSP15,
+	S_IVSP16,
+	S_IVSP17,
+	S_IVSP18,
+	S_IVSP19,
+	S_IVSP20,
+	S_IVSP21,
+	S_IVSP22,
+	S_IVSP23,
+	S_IVSP24,
+	S_IVSP25,
+	S_IVSP26,
+	S_IVSP27,
+	S_IVSP28,
+	S_IVSP29,
+
+	// Invincibility Sparkles Finish
+	S_IVSQ1,
+	S_IVSQ2,
+	S_IVSQ3,
+
+	// Dissipating Object
+	S_DISS,
+
+	// Bubbles
+	S_SMALLBUBBLE,
+	S_SMALLBUBBLE1,
+	S_MEDIUMBUBBLE,
+	S_MEDIUMBUBBLE1,
+	S_LARGEBUBBLE,
+	S_EXTRALARGEBUBBLE, // breathable
+	S_EXTRALARGEBUBBLE1,
+
+	// Drowning Timer Numbers
+	S_ZERO1,
+	S_ONE1,
+	S_TWO1,
+	S_THREE1,
+	S_FOUR1,
+	S_FIVE1,
+
+	S_POP1, // Extra Large bubble goes POP!
+
+	// 1-Up Box
+	S_PRUP1,
+	S_PRUP2,
+	S_PRUP3,
+	S_PRUP4,
+
+	// Bomb Shield Box
+	S_BKTV1,
+	S_BKTV2,
+	S_BKTV3,
+	S_BKTV4,
+
+	// Jump Shield Box
+	S_WHTV1,
+	S_WHTV2,
+	S_WHTV3,
+	S_WHTV4,
+
+	// Fire Shield Box
+	S_RDTV1,
+	S_RDTV2,
+	S_RDTV3,
+	S_RDTV4,
+
+	// Score Logos
+	S_SCRA, // 100
+	S_SCRA2,
+	S_SCRB, // 200
+	S_SCRB2,
+	S_SCRC, // 500
+	S_SCRC2,
+	S_SCRD, // 1000
+	S_SCRD2,
+
+	// Super Sonic Spark
+	S_SSPK1,
+	S_SSPK2,
+	S_SSPK3,
+	S_SSPK4,
+	S_SSPK5,
+
+	// Grass Debris
+	S_GRASS1,
+	S_GRASS2,
+	S_GRASS3,
+	S_GRASS4,
+	S_GRASS5,
+	S_GRASS6,
+	S_GRASS7,
+
+	// Yellow Diagonal Spring
+	S_YDIAG1,
+	S_YDIAG2,
+	S_YDIAG3,
+	S_YDIAG4,
+	S_YDIAG5,
+	S_YDIAG6,
+	S_YDIAG7,
+	S_YDIAG8,
+
+	// Red Diagonal Spring
+	S_RDIAG1,
+	S_RDIAG2,
+	S_RDIAG3,
+	S_RDIAG4,
+	S_RDIAG5,
+	S_RDIAG6,
+	S_RDIAG7,
+	S_RDIAG8,
+
+	// Yellow Upside-Down Diagonal Spring
+	S_YDIAGD1,
+	S_YDIAGD2,
+	S_YDIAGD3,
+	S_YDIAGD4,
+	S_YDIAGD5,
+	S_YDIAGD6,
+	S_YDIAGD7,
+	S_YDIAGD8,
+
+	// Red Upside-Down Diagonal Spring
+	S_RDIAGD1,
+	S_RDIAGD2,
+	S_RDIAGD3,
+	S_RDIAGD4,
+	S_RDIAGD5,
+	S_RDIAGD6,
+	S_RDIAGD7,
+	S_RDIAGD8,
+
+	// Skim Mine Dropper
+	S_SKIM1,
+	S_SKIM2,
+	S_SKIM3,
+	S_SKIM4,
+	S_SKIM5,
+	S_SKIM6,
+	S_SKIM7,
+	S_SKIM8,
+	S_SKIM9,
+	S_SKIM10,
+	S_SKIM11,
+	S_SKIM12,
+	S_SKIM13,
+	S_SKIM14,
+	S_SKIM15,
+	S_SKIM16,
+	S_SKIM17,
+	S_SKIM18,
+	S_SKIM19,
+	S_SKIM20,
+	S_SKIM21,
+	S_SKIM22,
+	S_SKIM23,
+	S_SKIM24,
+	S_SKIM25,
+	S_SKIM26,
+	S_SKIM27,
+	S_SKIM28,
+	S_SKIM29,
+	S_SKIM30,
+	S_SKIM_BOOM1,
+	S_SKIM_BOOM2,
+	S_SKIM_BOOM3,
+	S_SKIM_BOOM4,
+
+	// Skim Mine, also used by Jetty-Syn bomber
+	S_MINE1,
+	S_MINE_BOOM1,
+	S_MINE_BOOM2,
+	S_MINE_BOOM3,
+	S_MINE_BOOM4,
+
+	// Greenflower Fish
+	S_FISH1,
+	S_FISH2,
+	S_FISH3,
+	S_FISH4,
+	S_FISH_DIE1,
+	S_FISH_DIE2,
+	S_FISH_DIE3,
+	S_FISH_DIE4,
+
+	// Deep Sea Gargoyle
+	S_GARGOYLE,
+
+	// Water Splish
+	S_SPLISH1,
+	S_SPLISH2,
+	S_SPLISH3,
+	S_SPLISH4,
+	S_SPLISH5,
+	S_SPLISH6,
+	S_SPLISH7,
+	S_SPLISH8,
+	S_SPLISH9,
+
+	// Thok
+	S_THOK1,
+
+	// THZ Plant
+	S_THZPLANT1,
+	S_THZPLANT2,
+	S_THZPLANT3,
+	S_THZPLANT4,
+
+	// Level End Sign
+	S_SIGN1,
+	S_SIGN2,
+	S_SIGN3,
+	S_SIGN4,
+	S_SIGN5,
+	S_SIGN6,
+	S_SIGN7,
+	S_SIGN8,
+	S_SIGN9,
+	S_SIGN10,
+	S_SIGN11,
+	S_SIGN12,
+	S_SIGN13,
+	S_SIGN14,
+	S_SIGN15,
+	S_SIGN16,
+	S_SIGN17,
+	S_SIGN18,
+	S_SIGN19,
+	S_SIGN20,
+	S_SIGN21,
+	S_SIGN22,
+	S_SIGN23,
+	S_SIGN24,
+	S_SIGN25,
+	S_SIGN26,
+	S_SIGN27,
+	S_SIGN28,
+	S_SIGN29,
+	S_SIGN30,
+	S_SIGN31,
+	S_SIGN32,
+	S_SIGN33,
+	S_SIGN34,
+	S_SIGN35,
+	S_SIGN36,
+	S_SIGN37,
+	S_SIGN38,
+	S_SIGN39,
+	S_SIGN40,
+	S_SIGN41,
+	S_SIGN42,
+	S_SIGN43,
+	S_SIGN44,
+	S_SIGN45,
+	S_SIGN46,
+	S_SIGN47,
+	S_SIGN48,
+	S_SIGN49,
+	S_SIGN50,
+	S_SIGN51,
+	S_SIGN52, // Eggman
+	S_SIGN53, // Sonic
+	S_SIGN54, // Tails
+	S_SIGN55, // Knuckles
+	S_SIGN56, // Zim
+	S_SIGN57, // User
+	S_SIGN58, // User
+	S_SIGN59, // User
+	S_SIGN60, // User
+	S_SIGN61, // User
+	S_SIGN62, // User
+	S_SIGN63, // User
+	S_SIGN64, // User
+	S_SIGN65, // User
+	S_SIGN66, // User
+	S_SIGN67, // User
+	S_SIGN68, // User
+	S_SIGN69, // User
+	S_SIGN70, // User
+	S_SIGN71, // User
+	S_SIGN72, // User
+	S_SIGN73, // User
+	S_SIGN74, // User
+	S_SIGN75, // User
+	S_SIGN76, // User
+	S_SIGN77, // User
+	S_SIGN78, // User
+	S_SIGN79, // User
+	S_SIGN80, // User
+	S_SIGN81, // User
+	S_SIGN82, // User
+	S_SIGN83, // User
+	S_SIGN84, // User
+
+	// Red Ring
+	S_RRNG1,
+	S_RRNG2,
+	S_RRNG3,
+	S_RRNG4,
+	S_RRNG5,
+	S_RRNG6,
+	S_RRNG7,
+
+	// Tag Sign
+	S_TTAG1,
+
+	// Steam Riser
+	S_STEAM1,
+	S_STEAM2,
+	S_STEAM3,
+	S_STEAM4,
+	S_STEAM5,
+	S_STEAM6,
+	S_STEAM7,
+	S_STEAM8,
+
+	// CTF Flags
+	S_REDFLAG,
+	S_BLUEFLAG,
+
+	// Got Flag Sign
+	S_GOTFLAG1,
+	S_GOTFLAG2,
+	S_GOTFLAG3,
+	S_GOTFLAG4,
+
+	// Special Stage Token
+	S_TOKEN,
+	S_TOKEN2,
+
+	// Chaos Emeralds (intangible)
+	S_CEMG,
+	S_CEMO,
+	S_CEMP,
+	S_CEMB,
+	S_CEMR,
+	S_CEML,
+	S_CEMY,
+
+	// Jetty-Syn Bomber
+	S_JETBLOOK1,
+	S_JETBLOOK2,
+	S_JETBZOOM1,
+	S_JETBZOOM2,
+
+	// Jetty-Syn Gunner
+	S_JETGLOOK1,
+	S_JETGLOOK2,
+	S_JETGZOOM1,
+	S_JETGZOOM2,
+	S_JETGSHOOT1,
+	S_JETGSHOOT2,
+
+	// Jetty-Syn Bullet
+	S_JETBULLET1,
+	S_JETBULLET2,
+
+	// Freed Mouse
+	S_MOUSE1,
+	S_MOUSE2,
+
+	// Deton
+	S_DETON1,
+	S_DETON2,
+	S_DETON3,
+	S_DETON4,
+	S_DETON5,
+	S_DETON6,
+	S_DETON7,
+	S_DETON8,
+	S_DETON9,
+	S_DETON10,
+	S_DETON11,
+	S_DETON12,
+	S_DETON13,
+	S_DETON14,
+	S_DETON15,
+
+	// Robot Explosion
+	S_XPLD1,
+	S_XPLD2,
+	S_XPLD3,
+	S_XPLD4,
+
+	// CEZ Chain
+	S_CEZCHAIN,
+
+	// Super Sonic Cape
+	S_CAPE1,
+	S_CAPE2,
+
+	// Snowflake
+	S_SNOW1,
+	S_SNOW2,
+	S_SNOW3,
+
+	// Santa
+	S_SANTA1,
+
+	// Emeralds (for hunt)
+	S_EMER1,
+	S_EMES1,
+	S_EMET1,
+
+	// Snowball for Snow Buster
+	S_SBLL1,
+	S_SBLL2,
+
+	// Spike Ball
+	S_SPIKEBALL1,
+	S_SPIKEBALL2,
+	S_SPIKEBALL3,
+	S_SPIKEBALL4,
+	S_SPIKEBALL5,
+	S_SPIKEBALL6,
+	S_SPIKEBALL7,
+	S_SPIKEBALL8,
+
+	// Crawla Commander
+	S_CCOMMAND1,
+	S_CCOMMAND2,
+	S_CCOMMAND3,
+	S_CCOMMAND4,
+	S_CCOMMAND5,
+	S_CCOMMAND6,
+	S_CCOMMAND7,
+	S_CCOMMAND8,
+	S_CCOMMAND9,
+	S_CCOMMAND10,
+
+	S_CRUMBLE1,
+	S_CRUMBLE2,
+
+	// Rain
+	S_RAIN1,
+	S_RAINRETURN,
+
+	// Spikes
+	S_CEILINGSPIKE,
+	S_FLOORSPIKE,
+
+	// Starpost
+	S_STARPOST1,
+	S_STARPOST2,
+	S_STARPOST3,
+	S_STARPOST4,
+	S_STARPOST5,
+	S_STARPOST6,
+	S_STARPOST7,
+	S_STARPOST8,
+	S_STARPOST9,
+	S_STARPOST10,
+	S_STARPOST11,
+	S_STARPOST12,
+	S_STARPOST13,
+	S_STARPOST14,
+	S_STARPOST15,
+	S_STARPOST16,
+	S_STARPOST17,
+	S_STARPOST18,
+	S_STARPOST19,
+	S_STARPOST20,
+	S_STARPOST21,
+	S_STARPOST22,
+	S_STARPOST23,
+	S_STARPOST24,
+	S_STARPOST25,
+	S_STARPOST26,
+	S_STARPOST27,
+	S_STARPOST28,
+	S_STARPOST29,
+	S_STARPOST30,
+	S_STARPOST31,
+	S_STARPOST32,
+	S_STARPOST33,
+	S_STARPOST34,
+
+	// Homing Ring
+	S_HOMINGRING1,
+	S_HOMINGRING2,
+	S_HOMINGRING3,
+	S_HOMINGRING4,
+	S_HOMINGRING5,
+	S_HOMINGRING6,
+	S_HOMINGRING7,
+	S_HOMINGRING8,
+	S_HOMINGRING9,
+	S_HOMINGRING10,
+	S_HOMINGRING11,
+	S_HOMINGRING12,
+	S_HOMINGRING13,
+	S_HOMINGRING14,
+	S_HOMINGRING15,
+	S_HOMINGRING16,
+	S_HOMINGRING17,
+	S_HOMINGRING18,
+	S_HOMINGRING19,
+	S_HOMINGRING20,
+	S_HOMINGRING21,
+	S_HOMINGRING22,
+	S_HOMINGRING23,
+	S_HOMINGRING24,
+	S_HOMINGRING25,
+	S_HOMINGRING26,
+	S_HOMINGRING27,
+	S_HOMINGRING28,
+	S_HOMINGRING29,
+	S_HOMINGRING30,
+	S_HOMINGRING31,
+	S_HOMINGRING32,
+	S_HOMINGRING33,
+	S_HOMINGRING34,
+	S_HOMINGRING35,
+
+	// Rail Ring
+	S_RAILRING1,
+	S_RAILRING2,
+	S_RAILRING3,
+	S_RAILRING4,
+	S_RAILRING5,
+	S_RAILRING6,
+	S_RAILRING7,
+	S_RAILRING8,
+	S_RAILRING9,
+	S_RAILRING10,
+	S_RAILRING11,
+	S_RAILRING12,
+	S_RAILRING13,
+	S_RAILRING14,
+	S_RAILRING15,
+	S_RAILRING16,
+	S_RAILRING17,
+	S_RAILRING18,
+	S_RAILRING19,
+	S_RAILRING20,
+	S_RAILRING21,
+	S_RAILRING22,
+	S_RAILRING23,
+	S_RAILRING24,
+	S_RAILRING25,
+	S_RAILRING26,
+	S_RAILRING27,
+	S_RAILRING28,
+	S_RAILRING29,
+	S_RAILRING30,
+	S_RAILRING31,
+	S_RAILRING32,
+	S_RAILRING33,
+	S_RAILRING34,
+	S_RAILRING35,
+
+	// Infinity Ring
+	S_INFINITYRING1,
+	S_INFINITYRING2,
+	S_INFINITYRING3,
+	S_INFINITYRING4,
+	S_INFINITYRING5,
+	S_INFINITYRING6,
+	S_INFINITYRING7,
+	S_INFINITYRING8,
+	S_INFINITYRING9,
+	S_INFINITYRING10,
+	S_INFINITYRING11,
+	S_INFINITYRING12,
+	S_INFINITYRING13,
+	S_INFINITYRING14,
+	S_INFINITYRING15,
+	S_INFINITYRING16,
+	S_INFINITYRING17,
+	S_INFINITYRING18,
+	S_INFINITYRING19,
+	S_INFINITYRING20,
+	S_INFINITYRING21,
+	S_INFINITYRING22,
+	S_INFINITYRING23,
+	S_INFINITYRING24,
+	S_INFINITYRING25,
+	S_INFINITYRING26,
+	S_INFINITYRING27,
+	S_INFINITYRING28,
+	S_INFINITYRING29,
+	S_INFINITYRING30,
+	S_INFINITYRING31,
+	S_INFINITYRING32,
+	S_INFINITYRING33,
+	S_INFINITYRING34,
+	S_INFINITYRING35,
+
+	// Automatic Ring
+	S_AUTOMATICRING1,
+	S_AUTOMATICRING2,
+	S_AUTOMATICRING3,
+	S_AUTOMATICRING4,
+	S_AUTOMATICRING5,
+	S_AUTOMATICRING6,
+	S_AUTOMATICRING7,
+	S_AUTOMATICRING8,
+	S_AUTOMATICRING9,
+	S_AUTOMATICRING10,
+	S_AUTOMATICRING11,
+	S_AUTOMATICRING12,
+	S_AUTOMATICRING13,
+	S_AUTOMATICRING14,
+	S_AUTOMATICRING15,
+	S_AUTOMATICRING16,
+	S_AUTOMATICRING17,
+	S_AUTOMATICRING18,
+	S_AUTOMATICRING19,
+	S_AUTOMATICRING20,
+	S_AUTOMATICRING21,
+	S_AUTOMATICRING22,
+	S_AUTOMATICRING23,
+	S_AUTOMATICRING24,
+	S_AUTOMATICRING25,
+	S_AUTOMATICRING26,
+	S_AUTOMATICRING27,
+	S_AUTOMATICRING28,
+	S_AUTOMATICRING29,
+	S_AUTOMATICRING30,
+	S_AUTOMATICRING31,
+	S_AUTOMATICRING32,
+	S_AUTOMATICRING33,
+	S_AUTOMATICRING34,
+	S_AUTOMATICRING35,
+
+	// Explosion Ring
+	S_EXPLOSIONRING1,
+	S_EXPLOSIONRING2,
+	S_EXPLOSIONRING3,
+	S_EXPLOSIONRING4,
+	S_EXPLOSIONRING5,
+	S_EXPLOSIONRING6,
+	S_EXPLOSIONRING7,
+	S_EXPLOSIONRING8,
+	S_EXPLOSIONRING9,
+	S_EXPLOSIONRING10,
+	S_EXPLOSIONRING11,
+	S_EXPLOSIONRING12,
+	S_EXPLOSIONRING13,
+	S_EXPLOSIONRING14,
+	S_EXPLOSIONRING15,
+	S_EXPLOSIONRING16,
+	S_EXPLOSIONRING17,
+	S_EXPLOSIONRING18,
+	S_EXPLOSIONRING19,
+	S_EXPLOSIONRING20,
+	S_EXPLOSIONRING21,
+	S_EXPLOSIONRING22,
+	S_EXPLOSIONRING23,
+	S_EXPLOSIONRING24,
+	S_EXPLOSIONRING25,
+	S_EXPLOSIONRING26,
+	S_EXPLOSIONRING27,
+	S_EXPLOSIONRING28,
+	S_EXPLOSIONRING29,
+	S_EXPLOSIONRING30,
+	S_EXPLOSIONRING31,
+	S_EXPLOSIONRING32,
+	S_EXPLOSIONRING33,
+	S_EXPLOSIONRING34,
+	S_EXPLOSIONRING35,
+
+	// Thrown Weapon Rings
+	S_THROWNAUTOMATICEXPLOSIONHOMING1,
+	S_THROWNAUTOMATICEXPLOSIONHOMING2,
+	S_THROWNAUTOMATICEXPLOSIONHOMING3,
+	S_THROWNAUTOMATICEXPLOSIONHOMING4,
+	S_THROWNAUTOMATICEXPLOSIONHOMING5,
+	S_THROWNAUTOMATICEXPLOSIONHOMING6,
+	S_THROWNAUTOMATICEXPLOSIONHOMING7,
+	S_THROWNAUTOMATICEXPLOSION1,
+	S_THROWNAUTOMATICEXPLOSION2,
+	S_THROWNAUTOMATICEXPLOSION3,
+	S_THROWNAUTOMATICEXPLOSION4,
+	S_THROWNAUTOMATICEXPLOSION5,
+	S_THROWNAUTOMATICEXPLOSION6,
+	S_THROWNAUTOMATICEXPLOSION7,
+	S_THROWNAUTOMATICHOMING1,
+	S_THROWNAUTOMATICHOMING2,
+	S_THROWNAUTOMATICHOMING3,
+	S_THROWNAUTOMATICHOMING4,
+	S_THROWNAUTOMATICHOMING5,
+	S_THROWNAUTOMATICHOMING6,
+	S_THROWNAUTOMATICHOMING7,
+	S_THROWNHOMINGEXPLOSION1,
+	S_THROWNHOMINGEXPLOSION2,
+	S_THROWNHOMINGEXPLOSION3,
+	S_THROWNHOMINGEXPLOSION4,
+	S_THROWNHOMINGEXPLOSION5,
+	S_THROWNHOMINGEXPLOSION6,
+	S_THROWNHOMINGEXPLOSION7,
+	S_THROWNHOMING1,
+	S_THROWNHOMING2,
+	S_THROWNHOMING3,
+	S_THROWNHOMING4,
+	S_THROWNHOMING5,
+	S_THROWNHOMING6,
+	S_THROWNHOMING7,
+	S_THROWNAUTOMATIC1,
+	S_THROWNAUTOMATIC2,
+	S_THROWNAUTOMATIC3,
+	S_THROWNAUTOMATIC4,
+	S_THROWNAUTOMATIC5,
+	S_THROWNAUTOMATIC6,
+	S_THROWNAUTOMATIC7,
+	S_THROWNEXPLOSION1,
+	S_THROWNEXPLOSION2,
+	S_THROWNEXPLOSION3,
+	S_THROWNEXPLOSION4,
+	S_THROWNEXPLOSION5,
+	S_THROWNEXPLOSION6,
+	S_THROWNEXPLOSION7,
+	S_RINGEXPLODE,
+
+	// Greenflower Scenery
+	S_BERRYBUSH,
+	S_BUSH,
+	S_GFZFLOWERB1,
+	S_GFZFLOWERB2,
+	S_GFZFLOWERC1,
+
+	// Teleport Box
+	S_MIXUPBOX1,
+	S_MIXUPBOX2,
+	S_MIXUPBOX3,
+	S_MIXUPBOX4,
+
+	// Question Box
+	S_RANDOMBOX1,
+	S_RANDOMBOX2,
+	S_RANDOMBOX3,
+
+	// Monitor Explosion
+	S_MONITOREXPLOSION1,
+	S_MONITOREXPLOSION2,
+	S_MONITOREXPLOSION3,
+	S_MONITOREXPLOSION4,
+	S_MONITOREXPLOSION5,
+
+	// Flame (has corona)
+	S_FLAME1,
+	S_FLAME2,
+	S_FLAME3,
+	S_FLAME4,
+
+	// Mario-specific stuff
+	S_PUMA1,
+	S_PUMA2,
+	S_PUMA3,
+	S_PUMA4,
+	S_PUMA5,
+	S_PUMA6,
+	S_HAMMER1,
+	S_HAMMER2,
+	S_HAMMER3,
+	S_HAMMER4,
+	S_KOOPA1,
+	S_KOOPA2,
+	S_SHELL,
+	S_SHELL1,
+	S_SHELL2,
+	S_SHELL3,
+	S_SHELL4,
+	S_AXE1,
+	S_AXE2,
+	S_AXE3,
+	S_KOOPAFLAME1,
+	S_KOOPAFLAME2,
+	S_KOOPAFLAME3,
+	S_FIREBALL1,
+	S_FIREBALL2,
+	S_FIREBALL3,
+	S_FIREBALL4,
+	S_FIREBALLEXP1,
+	S_FIREBALLEXP2,
+	S_FIREBALLEXP3,
+	S_FIREFLOWER1,
+	S_FIREFLOWER2,
+	S_FIREFLOWER3,
+	S_FIREFLOWER4,
+
+	// Nights-specific stuff
+	S_NIGHTSPARKLE1,
+	S_NIGHTSPARKLE2,
+	S_NIGHTSPARKLE3,
+	S_NIGHTSPARKLE4,
+	S_NIGHTSDRONE1,
+	S_NIGHTSDRONE2,
+	S_NIGHTSFLY1A,
+	S_NIGHTSFLY1B,
+	S_NIGHTSFLY2A,
+	S_NIGHTSFLY2B,
+	S_NIGHTSFLY3A,
+	S_NIGHTSFLY3B,
+	S_NIGHTSFLY4A,
+	S_NIGHTSFLY4B,
+	S_NIGHTSFLY5A,
+	S_NIGHTSFLY5B,
+	S_NIGHTSFLY6A,
+	S_NIGHTSFLY6B,
+	S_NIGHTSFLY7A,
+	S_NIGHTSFLY7B,
+	S_NIGHTSFLY8A,
+	S_NIGHTSFLY8B,
+	S_NIGHTSFLY9A,
+	S_NIGHTSFLY9B,
+	S_NIGHTSHURT1,
+	S_NIGHTSHURT2,
+	S_NIGHTSHURT3,
+	S_NIGHTSHURT4,
+	S_NIGHTSHURT5,
+	S_NIGHTSHURT6,
+	S_NIGHTSHURT7,
+	S_NIGHTSHURT8,
+	S_NIGHTSHURT9,
+	S_NIGHTSHURT10,
+	S_NIGHTSHURT11,
+	S_NIGHTSHURT12,
+	S_NIGHTSHURT13,
+	S_NIGHTSHURT14,
+	S_NIGHTSHURT15,
+	S_NIGHTSHURT16,
+	S_NIGHTSHURT17,
+	S_NIGHTSHURT18,
+	S_NIGHTSHURT19,
+	S_NIGHTSHURT20,
+	S_NIGHTSHURT21,
+	S_NIGHTSHURT22,
+	S_NIGHTSHURT23,
+	S_NIGHTSHURT24,
+	S_NIGHTSHURT25,
+	S_NIGHTSHURT26,
+	S_NIGHTSHURT27,
+	S_NIGHTSHURT28,
+	S_NIGHTSHURT29,
+	S_NIGHTSHURT30,
+	S_NIGHTSHURT31,
+	S_NIGHTSHURT32,
+	S_NIGHTSDRILL1A,
+	S_NIGHTSDRILL1B,
+	S_NIGHTSDRILL1C,
+	S_NIGHTSDRILL1D,
+	S_NIGHTSDRILL2A,
+	S_NIGHTSDRILL2B,
+	S_NIGHTSDRILL2C,
+	S_NIGHTSDRILL2D,
+	S_NIGHTSDRILL3A,
+	S_NIGHTSDRILL3B,
+	S_NIGHTSDRILL3C,
+	S_NIGHTSDRILL3D,
+	S_NIGHTSDRILL4A,
+	S_NIGHTSDRILL4B,
+	S_NIGHTSDRILL4C,
+	S_NIGHTSDRILL4D,
+	S_NIGHTSDRILL5A,
+	S_NIGHTSDRILL5B,
+	S_NIGHTSDRILL5C,
+	S_NIGHTSDRILL5D,
+	S_NIGHTSDRILL6A,
+	S_NIGHTSDRILL6B,
+	S_NIGHTSDRILL6C,
+	S_NIGHTSDRILL6D,
+	S_NIGHTSDRILL7A,
+	S_NIGHTSDRILL7B,
+	S_NIGHTSDRILL7C,
+	S_NIGHTSDRILL7D,
+	S_NIGHTSDRILL8A,
+	S_NIGHTSDRILL8B,
+	S_NIGHTSDRILL8C,
+	S_NIGHTSDRILL8D,
+	S_NIGHTSDRILL9A,
+	S_NIGHTSDRILL9B,
+	S_NIGHTSDRILL9C,
+	S_NIGHTSDRILL9D,
+
+	// Flower Seed
+	S_SEED,
+
+	S_JETFUME1,
+	S_JETFUME2,
+	S_JETFUME3,
+	S_JETFUME4,
+
+	S_HOOP,
+	S_NIGHTSCORE10,
+	S_NIGHTSCORE20,
+	S_NIGHTSCORE30,
+	S_NIGHTSCORE40,
+	S_NIGHTSCORE50,
+	S_NIGHTSCORE60,
+	S_NIGHTSCORE70,
+	S_NIGHTSCORE80,
+	S_NIGHTSCORE90,
+	S_NIGHTSCORE100,
+
+	S_NIGHTSWING,
+
+	// Boss 2
+	S_EGGMOBILE2_STND,
+	S_EGGMOBILE2_POGO1,
+	S_EGGMOBILE2_POGO2,
+	S_EGGMOBILE2_POGO3,
+	S_EGGMOBILE2_POGO4,
+	S_EGGMOBILE2_PAIN,
+	S_EGGMOBILE2_PAIN2,
+	S_EGGMOBILE2_DIE1,
+	S_EGGMOBILE2_DIE2,
+	S_EGGMOBILE2_DIE3,
+	S_EGGMOBILE2_DIE4,
+	S_EGGMOBILE2_DIE5,
+	S_EGGMOBILE2_DIE6,
+	S_EGGMOBILE2_DIE7,
+	S_EGGMOBILE2_DIE8,
+	S_EGGMOBILE2_DIE9,
+	S_EGGMOBILE2_DIE10,
+	S_EGGMOBILE2_DIE11,
+	S_EGGMOBILE2_DIE12,
+	S_EGGMOBILE2_DIE13,
+	S_EGGMOBILE2_DIE14,
+	S_EGGMOBILE2_FLEE1,
+	S_EGGMOBILE2_FLEE2,
+
+	// Boss 2 Goop
+	S_GOOP1,
+	S_GOOP2,
+	S_GOOP3,
+
+	// Boss Explosion
+	S_BPLD1,
+	S_BPLD2,
+	S_BPLD3,
+	S_BPLD4,
+	S_BPLD5,
+	S_BPLD6,
+	S_BPLD7,
+
+	// THZ Alarm
+	S_ALARM1,
+
+	// Emblem
+	S_EMBLEM1,
+
+	// Eggman Box
+	S_EGGTV1,
+	S_EGGTV2,
+	S_EGGTV3,
+	S_EGGTV4,
+
+	// Fire Shield's Spawn
+	S_SPINFIRE1,
+	S_SPINFIRE2,
+	S_SPINFIRE3,
+	S_SPINFIRE4,
+	S_SPINFIRE5,
+	S_SPINFIRE6,
+
+	S_BOSSTANK1,
+	S_BOSSTANK2,
+	S_BOSSSPIGOT,
+
+	S_FOG1,
+	S_FOG2,
+	S_FOG3,
+	S_FOG4,
+	S_FOG5,
+	S_FOG6,
+	S_FOG7,
+	S_FOG8,
+	S_FOG9,
+	S_FOG10,
+	S_FOG11,
+	S_FOG12,
+	S_FOG13,
+	S_FOG14,
+	S_EEGG, // Easter Egg
+	S_LITE,
+
+	// THZ Turret
+	S_TURRET,
+	S_TURRETFIRE,
+	S_TURRETSHOCK1,
+	S_TURRETSHOCK2,
+	S_TURRETSHOCK3,
+	S_TURRETSHOCK4,
+	S_TURRETSHOCK5,
+	S_TURRETSHOCK6,
+	S_TURRETSHOCK7,
+	S_TURRETSHOCK8,
+	S_TURRETSHOCK9,
+
+	S_TURRETLASER,
+	S_TURRETLASEREXPLODE1,
+	S_TURRETLASEREXPLODE2,
+
+	// GFZ Flower
+	S_GFZFLOWERD1,
+
+	// More Mario-specific stuff
+	S_GOOMBA1,
+	S_GOOMBA1B,
+	S_GOOMBA2,
+	S_GOOMBA3,
+	S_GOOMBA4,
+	S_GOOMBA5,
+	S_GOOMBA6,
+	S_GOOMBA7,
+	S_GOOMBA8,
+	S_GOOMBA9,
+	S_GOOMBA_DEAD,
+	S_BLUEGOOMBA1,
+	S_BLUEGOOMBA1B,
+	S_BLUEGOOMBA2,
+	S_BLUEGOOMBA3,
+	S_BLUEGOOMBA4,
+	S_BLUEGOOMBA5,
+	S_BLUEGOOMBA6,
+	S_BLUEGOOMBA7,
+	S_BLUEGOOMBA8,
+	S_BLUEGOOMBA9,
+	S_BLUEGOOMBA_DEAD,
+	S_MARIOBUSH1,
+	S_MARIOBUSH2,
+	S_TOAD,
+	S_COIN1,
+	S_COIN2,
+	S_COIN3,
+	S_COINSPARKLE1,
+	S_COINSPARKLE2,
+	S_COINSPARKLE3,
+	S_COINSPARKLE4,
+
+	// Xmas-specific stuff
+	S_XMASPOLE,
+	S_CANDYCANE,
+	S_SNOWMAN,
+
+	S_EGGCAPSULE,
+
+	S_SUPERTRANS1,
+	S_SUPERTRANS2,
+	S_SUPERTRANS3,
+	S_SUPERTRANS4,
+	S_SUPERTRANS5,
+	S_SUPERTRANS6,
+	S_SUPERTRANS7,
+	S_SUPERTRANS8,
+	S_SUPERTRANS9,
+
+	S_ROCKCRUMBLEA1,
+	S_ROCKCRUMBLEA2,
+	S_ROCKCRUMBLEA3,
+	S_ROCKCRUMBLEA4,
+	S_ROCKCRUMBLEA5,
+
+	S_ROCKCRUMBLEB1,
+	S_ROCKCRUMBLEB2,
+	S_ROCKCRUMBLEB3,
+	S_ROCKCRUMBLEB4,
+	S_ROCKCRUMBLEB5,
+
+	S_ROCKCRUMBLEC1,
+	S_ROCKCRUMBLEC2,
+	S_ROCKCRUMBLEC3,
+	S_ROCKCRUMBLEC4,
+	S_ROCKCRUMBLEC5,
+
+	S_ROCKCRUMBLED1,
+	S_ROCKCRUMBLED2,
+	S_ROCKCRUMBLED3,
+	S_ROCKCRUMBLED4,
+	S_ROCKCRUMBLED5,
+
+	S_ROCKCRUMBLEE1,
+	S_ROCKCRUMBLEE2,
+	S_ROCKCRUMBLEE3,
+	S_ROCKCRUMBLEE4,
+	S_ROCKCRUMBLEE5,
+
+	S_ROCKCRUMBLEF1,
+	S_ROCKCRUMBLEF2,
+	S_ROCKCRUMBLEF3,
+	S_ROCKCRUMBLEF4,
+	S_ROCKCRUMBLEF5,
+
+	S_ROCKCRUMBLEG1,
+	S_ROCKCRUMBLEG2,
+	S_ROCKCRUMBLEG3,
+	S_ROCKCRUMBLEG4,
+	S_ROCKCRUMBLEG5,
+
+	S_ROCKCRUMBLEH1,
+	S_ROCKCRUMBLEH2,
+	S_ROCKCRUMBLEH3,
+	S_ROCKCRUMBLEH4,
+	S_ROCKCRUMBLEH5,
+
+	S_ROCKCRUMBLEI1,
+	S_ROCKCRUMBLEI2,
+	S_ROCKCRUMBLEI3,
+	S_ROCKCRUMBLEI4,
+	S_ROCKCRUMBLEI5,
+
+	S_ROCKCRUMBLEJ1,
+	S_ROCKCRUMBLEJ2,
+	S_ROCKCRUMBLEJ3,
+	S_ROCKCRUMBLEJ4,
+	S_ROCKCRUMBLEJ5,
+
+	S_ROCKCRUMBLEK1,
+	S_ROCKCRUMBLEK2,
+	S_ROCKCRUMBLEK3,
+	S_ROCKCRUMBLEK4,
+	S_ROCKCRUMBLEK5,
+
+	S_ROCKCRUMBLEL1,
+	S_ROCKCRUMBLEL2,
+	S_ROCKCRUMBLEL3,
+	S_ROCKCRUMBLEL4,
+	S_ROCKCRUMBLEL5,
+
+	S_ROCKCRUMBLEM1,
+	S_ROCKCRUMBLEM2,
+	S_ROCKCRUMBLEM3,
+	S_ROCKCRUMBLEM4,
+	S_ROCKCRUMBLEM5,
+
+	S_ROCKCRUMBLEN1,
+	S_ROCKCRUMBLEN2,
+	S_ROCKCRUMBLEN3,
+	S_ROCKCRUMBLEN4,
+	S_ROCKCRUMBLEN5,
+
+	S_ROCKCRUMBLEO1,
+	S_ROCKCRUMBLEO2,
+	S_ROCKCRUMBLEO3,
+	S_ROCKCRUMBLEO4,
+	S_ROCKCRUMBLEO5,
+
+	S_ROCKCRUMBLEP1,
+	S_ROCKCRUMBLEP2,
+	S_ROCKCRUMBLEP3,
+	S_ROCKCRUMBLEP4,
+	S_ROCKCRUMBLEP5,
+
+	// NiGHTS Paraloop Powerups
+	S_NIGHTSPOWERUP1,
+	S_NIGHTSPOWERUP2,
+	S_NIGHTSPOWERUP3,
+	S_NIGHTSPOWERUP4,
+	S_NIGHTSPOWERUP5,
+	S_NIGHTSPOWERUP6,
+
+	S_NIGHTSCORE10_2,
+	S_NIGHTSCORE20_2,
+	S_NIGHTSCORE30_2,
+	S_NIGHTSCORE40_2,
+	S_NIGHTSCORE50_2,
+	S_NIGHTSCORE60_2,
+	S_NIGHTSCORE70_2,
+	S_NIGHTSCORE80_2,
+	S_NIGHTSCORE90_2,
+	S_NIGHTSCORE100_2,
+
+	// Hyper Sonic Spark
+	S_HSPK1,
+	S_HSPK2,
+	S_HSPK3,
+	S_HSPK4,
+	S_HSPK5,
+
+	S_REDXVI,
+
+	// Blue Springs
+	S_BLUESPRING,
+	S_BLUESPRING2,
+	S_BLUESPRING3,
+	S_BLUESPRING4,
+	S_BLUESPRING5,
+
+	// Buzz (Gold)
+	S_BUZZLOOK1,
+	S_BUZZLOOK2,
+	S_BUZZFLY1,
+	S_BUZZFLY2,
+
+	// Buzz (Red)
+	S_RBUZZLOOK1,
+	S_RBUZZLOOK2,
+	S_RBUZZFLY1,
+	S_RBUZZFLY2,
+
+	// 8th Emerald
+	S_CEMK,
+
+	// Extra 1up icon slots (C-Z)
+	S_PRUPAUX1,
+	S_PRUPAUX2,
+	S_PRUPAUX3,
+	S_PRUPAUX4,
+	S_PRUPAUX5,
+	S_PRUPAUX6,
+	S_PRUPAUX7,
+	S_PRUPAUX8,
+	S_PRUPAUX9,
+	S_PRUPAUX10,
+	S_PRUPAUX11,
+	S_PRUPAUX12,
+	S_PRUPAUX13,
+	S_PRUPAUX14,
+	S_PRUPAUX15,
+	S_PRUPAUX16,
+	S_PRUPAUX17,
+	S_PRUPAUX18,
+	S_PRUPAUX19,
+	S_PRUPAUX20,
+	S_PRUPAUX21,
+	S_PRUPAUX22,
+	S_PRUPAUX23,
+	S_PRUPAUX24,
+	S_PRUPAUX25,
+	S_PRUPAUX26,
+	S_PRUPAUX27,
+	S_PRUPAUX28,
+	S_PRUPAUX29,
+	S_PRUPAUX30,
+	S_PRUPAUX31,
+	S_PRUPAUX32,
+	S_PRUPAUX33,
+	S_PRUPAUX34,
+	S_PRUPAUX35,
+	S_PRUPAUX36,
+
+	S_TURRETLOOK,
+	S_TURRETPOPUP1,
+	S_TURRETPOPUP2,
+	S_TURRETPOPUP3,
+	S_TURRETPOPUP4,
+	S_TURRETSHOOT,
+	S_TURRETPOPDOWN1,
+	S_TURRETPOPDOWN2,
+	S_TURRETPOPDOWN3,
+	S_TURRETPOPDOWN4,	
+
+	S_FIRSTFREESLOT,
+	S_LASTFREESLOT = S_FIRSTFREESLOT + NUMSTATEFREESLOTS - 1,
+	NUMSTATES
+} statenum_t;
+
+typedef struct
+{
+	spritenum_t sprite;
+	long frame; // we use the upper 16 bits for translucency and other shade effects
+	long tics;
+	actionf_t action;
+	statenum_t nextstate;
+} state_t;
+
+extern state_t states[NUMSTATES];
+extern const char* sprnames[NUMSPRITES + 1];
+
+// Little flag for SOC editor (don't change this comment!)
+typedef enum
+{
+	MT_PLAYER,
+	MT_BLUECRAWLA,
+	MT_REDCRAWLA,
+	MT_EGGMOBILE,
+	MT_ROCKET,
+	MT_RING,
+	MT_SUPERRINGBOX,
+	MT_GREYRINGBOX,
+	MT_EMMY, // emerald token for special stage
+	MT_INV,
+	MT_BLUETV,
+	MT_FAN,
+	MT_BUBBLES, // Bubble source
+	MT_GFZFLOWER1,
+	MT_YELLOWTV,
+	MT_REDTV,
+	MT_YELLOWSPRING,
+	MT_SNEAKERTV,
+	MT_REDSPRING,
+	MT_CHASECAM,
+	MT_SPIRIT,
+	MT_SMOK,
+	MT_BLUESPRING,
+	MT_PUSH,
+	MT_PULL,
+	MT_FLINGRING, // Lost ring
+	MT_BIRD, // Birdie freed!
+	MT_SQRL, // Squirrel freed!
+	MT_REDORB, // shield mobjs
+	MT_YELLOWORB, // shield mobjs
+	MT_BLUEORB, // shield mobjs
+	MT_BLACKORB, // shield mobjs
+	MT_WHITEORB, // shield mobjs
+	MT_SPARK, //spark
+	MT_IVSP, // invincibility sparkles
+	MT_IVSQ, // invincibility sparkles finish
+	MT_DISS, // dissipating object
+	MT_SMALLBUBBLE, // small bubble
+	MT_MEDIUMBUBBLE, // medium bubble
+	MT_EXTRALARGEBUBBLE, // extra large bubble
+	MT_ZERO, // Drowning Timer - 0
+	MT_ONE, // Drowning Timer - 1
+	MT_TWO, // Drowning Timer - 2
+	MT_THREE, // Drowning Timer - 3
+	MT_FOUR, // Drowning Timer - 4
+	MT_FIVE, // Drowning Timer - 5
+	MT_POP, // Extra Large bubble goes POP!
+	MT_PRUP, // 1up Box
+	MT_BLACKTV, // Bomb shield TV
+	MT_WHITETV, // Jump shield TV
+	MT_SCRA, // 100 score logo
+	MT_SCRB, // 200 score logo
+	MT_SCRC, // 500 score logo
+	MT_SCRD, // 1000 score logo
+	MT_SUPERSPARK, // Super Sonic Spark
+	MT_GRASSDEBRIS, // Grass debris
+	MT_YELLOWDIAG, // Yellow Diagonal Spring
+	MT_REDDIAG, // Red Diagonal Spring
+	MT_AWATERA, // Ambient Water Sound 1
+	MT_AWATERB, // Ambient Water Sound 2
+	MT_AWATERC, // Ambient Water Sound 3
+	MT_AWATERD, // Ambient Water Sound 4
+	MT_AWATERE, // Ambient Water Sound 5
+	MT_AWATERF, // Ambient Water Sound 6
+	MT_AWATERG, // Ambient Water Sound 7
+	MT_AWATERH, // Ambient Water Sound 8
+	MT_SKIM, // Skim mine dropper
+	MT_MINE, // Skim mine
+	MT_GFZFISH, // Greenflower Fish
+	MT_GARGOYLE, // Deep Sea Gargoyle
+	MT_SPLISH, // Water splish!
+	MT_THOK, // Thok! mobj
+	MT_THZPLANT, // THZ Plant
+	MT_SIGN, // Level end sign
+	MT_REDRING,
+	MT_TAG, // Tag Sign
+	MT_STEAM, // Steam riser
+	MT_REDFLAG, // Red CTF Flag
+	MT_BLUEFLAG, // Blue CTF Flag
+	MT_GOTFLAG, // Got Flag sign
+	MT_GOTFLAG2, // Got Flag sign
+	MT_TOKEN, // Special Stage Token
+	MT_GREENEMERALD, // Chaos Emerald (intangible)
+	MT_ORANGEEMERALD, // Chaos Emerald (intangible)
+	MT_PINKEMERALD, // Chaos Emerald (intangible)
+	MT_BLUEEMERALD, // Chaos Emerald (intangible)
+	MT_REDEMERALD, // Chaos Emerald (intangible)
+	MT_LIGHTBLUEEMERALD, // Chaos Emerald (intangible)
+	MT_GREYEMERALD, // Chaos Emerald (intangible)
+	MT_JETTBOMBER, // Jetty-Syn Bomber
+	MT_JETTGUNNER, // Jetty-Syn Gunner
+	MT_JETTBULLET, // Jetty-Syn Bullet
+	MT_MOUSE, // Mouse
+	MT_DETON, // Deton
+	MT_EXPLODE, // Robot Explosion
+	MT_CHAIN, // CEZ Chain
+	MT_CAPE, // Fake little Super Sonic cape
+	MT_SNOWFLAKE, // Snowflake
+	MT_SANTA, // Santa
+	MT_EMERHUNT, // Emerald Hunt 1
+	MT_EMESHUNT, // Emerald Hunt 2
+	MT_EMETHUNT, // Emerald Hunt 3
+	MT_SNOWBALL, // Snow Ball for Snow Buster
+	MT_SPIKEBALL, // Spike Ball
+	MT_CRAWLACOMMANDER, // Crawla Commander
+	MT_CRUMBLEOBJ, // Sound generator for crumbling platform
+	MT_YELLOWDIAGDOWN, // Yellow Diagonal Upside-Down Spring
+	MT_REDDIAGDOWN, // Red Diagonal Upside-Down Spring
+	MT_YELLOWSPRINGDOWN,
+	MT_REDSPRINGDOWN,
+	MT_RAIN, // Rain
+	MT_CEILINGSPIKE,
+	MT_FLOORSPIKE,
+	MT_STARPOST,
+	MT_SPECIALSPIKEBALL,
+	MT_HOMINGRING,
+	MT_RAILRING,
+	MT_INFINITYRING,
+	MT_AUTOMATICRING,
+	MT_EXPLOSIONRING,
+	MT_THROWNAUTOMATICEXPLOSIONHOMING,
+	MT_THROWNAUTOMATICEXPLOSION,
+	MT_THROWNAUTOMATICHOMING,
+	MT_THROWNHOMINGEXPLOSION,
+	MT_THROWNHOMING,
+	MT_THROWNAUTOMATIC,
+	MT_THROWNEXPLOSION,
+	MT_BERRYBUSH,
+	MT_BUSH,
+	MT_GFZFLOWER2,
+	MT_GFZFLOWER3,
+	MT_MIXUPBOX,
+	MT_QUESTIONBOX,
+	MT_MONITOREXPLOSION,
+	MT_RINGICO,
+	MT_SRINGICO,
+	MT_1UPICO,
+	MT_BSHIELDICO,
+	MT_YSHIELDICO,
+	MT_KSHIELDICO,
+	MT_WSHIELDICO,
+	MT_RSHIELDICO,
+	MT_INVCICO,
+	MT_MIXUPICO,
+	MT_SHOESICO,
+	MT_FLAME, // Flame (has corona)
+
+	// Mario-specific stuff
+	MT_PUMA,
+	MT_HAMMER,
+	MT_KOOPA,
+	MT_SHELL,
+	MT_AXE,
+	MT_KOOPAFLAME,
+	MT_FIREBALL,
+	MT_FIREFLOWER,
+
+	MT_NIGHTSPARKLE,
+	MT_AXIS1,
+	MT_AXIS2,
+	MT_AXIS3,
+	MT_AXIS1A,
+	MT_AXIS2A,
+	MT_AXIS3A,
+	MT_AXISTRANSFER,
+	MT_AXISTRANSFERCONDITION,
+	MT_AXISTRANSFERCONDITION2,
+	MT_AXISTRANSFERCLOSEST,
+	MT_AXISTRANSFERTOLAST,
+	MT_NIGHTSDRONE,
+	MT_NIGHTSCHAR,
+
+	MT_SEED,
+	MT_JETFUME1,
+	MT_JETFUME2,
+	MT_HOOP,
+	MT_HOOPCOLLIDE, // Collision detection for NiGHTS hoops
+	MT_HOOPCENTER, // Center of a hoop
+	MT_NIGHTSCORE,
+	MT_NIGHTSWING,
+	MT_BOSSFLYPOINT,
+	MT_EGGMOBILE2,
+	MT_GOOP,
+	MT_BOSSEXPLODE,
+	MT_EGGTRAP,
+	MT_CHAOSSPAWNER,
+	MT_ALARM,
+	MT_EMBLEM,
+	MT_EGGMANBOX,
+	MT_EGGMANICO,
+	MT_SPINFIRE,
+	MT_BOSSTANK1,
+	MT_BOSSTANK2,
+	MT_BOSSSPIGOT,
+	MT_TFOG,
+	MT_EASTEREGG,
+	MT_STREETLIGHT,
+	MT_TURRET,
+	MT_TURRETLASER,
+	MT_GFZFLOWER4,
+
+	MT_GOOMBA,
+	MT_BLUEGOOMBA,
+	MT_MARIOBUSH1,
+	MT_MARIOBUSH2,
+	MT_TOAD,
+	MT_COIN,
+	MT_COINSPARKLE,
+	MT_FLINGCOIN,
+
+	MT_XMASPOLE,
+	MT_CANDYCANE,
+	MT_SNOWMAN,
+	MT_EGGCAPSULE,
+
+	MT_SUPERTRANS,
+
+	MT_RANDOMAMBIENT,
+
+	MT_ROCKCRUMBLE1,
+	MT_ROCKCRUMBLE2,
+	MT_ROCKCRUMBLE3,
+	MT_ROCKCRUMBLE4,
+	MT_ROCKCRUMBLE5,
+	MT_ROCKCRUMBLE6,
+	MT_ROCKCRUMBLE7,
+	MT_ROCKCRUMBLE8,
+	MT_ROCKCRUMBLE9,
+	MT_ROCKCRUMBLE10,
+	MT_ROCKCRUMBLE11,
+	MT_ROCKCRUMBLE12,
+	MT_ROCKCRUMBLE13,
+	MT_ROCKCRUMBLE14,
+	MT_ROCKCRUMBLE15,
+	MT_ROCKCRUMBLE16,
+
+	MT_TELEPORTMAN,
+
+	// NiGHTS Paraloop Powerups
+	MT_NIGHTSSUPERLOOP,
+	MT_NIGHTSDRILLREFILL,
+	MT_NIGHTSHELPER,
+
+	MT_HYPERSPARK,
+
+	MT_REDXVI, // He's BACK!
+
+	MT_GOLDBUZZ,
+	MT_REDBUZZ,
+
+	MT_EMERALD1,
+	MT_EMERALD2,
+	MT_EMERALD3,
+	MT_EMERALD4,
+	MT_EMERALD5,
+	MT_EMERALD6,
+	MT_EMERALD7,
+	MT_EMERALD8,
+
+	MT_ALTVIEWMAN,
+
+	MT_POPUPTURRET,
+
+	MT_RANDOMAMBIENT2,
+
+	MT_FIRSTFREESLOT,
+	MT_LASTFREESLOT = MT_FIRSTFREESLOT + NUMMOBJFREESLOTS - 1,
+	NUMMOBJTYPES
+} mobjtype_t;
+
+typedef struct
+{
+	int doomednum;
+	statenum_t spawnstate;
+	int spawnhealth;
+	statenum_t seestate;
+	sfxenum_t seesound;
+	int reactiontime;
+	sfxenum_t attacksound;
+	int painstate;
+	int painchance;
+	sfxenum_t painsound;
+	statenum_t meleestate;
+	statenum_t missilestate;
+	statenum_t deathstate;
+	statenum_t xdeathstate;
+	sfxenum_t deathsound;
+	int speed;
+	int radius;
+	int height;
+	int mass;
+	int damage;
+	sfxenum_t activesound;
+	int flags;
+	statenum_t raisestate;
+} mobjinfo_t;
+
+extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
+
+void P_PatchInfoTables(void);
+
+#endif
